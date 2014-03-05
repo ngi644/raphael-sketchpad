@@ -413,11 +413,10 @@
 				this.remove();
 			} else if (_options.editing == "text"){
                 if (this.type == 'text') {
-                    
+                    var stroke = this.attr();
+                    stroke.type = this.type;
                     var input_txt = window.prompt("Input Text", stroke.text);
-                        if (input_txt != null){
-                        var stroke = this.attr();
-                        stroke.type = this.type;
+                    if (input_txt != null){
                         _action_history.add({
                             type: "erase",
                             stroke: stroke
@@ -428,7 +427,7 @@
                                 _strokes.splice(i, 1);
                             }
                         }
-                        
+
                         _redraw_strokes();
 
                         var text_data = _paper.text().click(_pathclick);
