@@ -265,7 +265,7 @@
 					$(_container).unbind("mousedown", _mousedown);
 					$(_container).unbind("mousemove", _mousemove);
 					$(_container).unbind("mouseup", _mouseup);
-                    $(_canvas).unbind("click", _mouseup_text);
+                    $(_canvas).unbind("click", _mouseclick_text);
 
 					$(document).unbind("mouseup", _mouseup);
 
@@ -284,8 +284,7 @@
 					$(_container).unbind("mouseup", _mouseup);
 					$(document).unbind("mouseup", _mouseup);
                     //text event
-                    $(_canvas).click(_mouseup_text);
-                    //$(document).mouseup(_mouseup_text);
+                    $(_canvas).click(_mouseclick_text);
 
 					// iPhone Events
 					var agent = navigator.userAgent;
@@ -296,7 +295,7 @@
 					}
 				} else {
 					// Cursor is crosshair, so it looks like we can do something.
-                    $(_canvas).unbind("click", _mouseup_text);
+                    $(_canvas).unbind("click", _mouseclick_text);
 
 					$(_container).css("cursor", "crosshair");
 
@@ -321,7 +320,7 @@
 				$(_container).unbind("mousedown", _mousedown);
 				$(_container).unbind("mousemove", _mousemove);
 				$(_container).unbind("mouseup", _mouseup);
-                $(_canvas).unbind("click", _mouseup_text);
+                $(_canvas).unbind("click", _mouseclick_text);
 				$(document).unbind("mouseup", _mouseup);
 				
 				// iPhone Events
@@ -414,21 +413,24 @@
 				this.remove();
 			} else if (_options.editing == "text"){
                 if (this.type == 'text') {
-                    var stroke = this.attr();
-                    stroke.type = this.type;
-                    _action_history.add({
-                        type: "erase",
-                        stroke: stroke
-                    });
-                    for (var i = 0, n = _strokes.length; i < n; i++) {
-                        var s = _strokes[i];
-                        if (equiv(s, stroke)) {
-                            _strokes.splice(i, 1);
-                        }
-                    }
+                    
                     var input_txt = window.prompt("Input Text", stroke.text);
-                    _redraw_strokes();
-                    if (input_txt != null){
+                        if (input_txt != null){
+                        var stroke = this.attr();
+                        stroke.type = this.type;
+                        _action_history.add({
+                            type: "erase",
+                            stroke: stroke
+                        });
+                        for (var i = 0, n = _strokes.length; i < n; i++) {
+                            var s = _strokes[i];
+                            if (equiv(s, stroke)) {
+                                _strokes.splice(i, 1);
+                            }
+                        }
+                        
+                        _redraw_strokes();
+
                         var text_data = _paper.text().click(_pathclick);
                         text_data.attr({
                             "fill": stroke.fill,
@@ -490,7 +492,7 @@
 			}
 		};
 
-        function _mouseup_text(e){
+        function _mouseclick_text(e){
             if (edit_text==false){
                 var input_txt = window.prompt("Input Text", "");
                 if (input_txt != null){
