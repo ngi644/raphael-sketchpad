@@ -59,7 +59,7 @@
 			width: 100,
 			height: 100,
 			strokes: [],
-			editing: true
+			editing: "draw"
 		};
 		jQuery.extend(_options, options);
 		
@@ -82,7 +82,9 @@
 
 		// The default pen.
 		var _pen = new Pen();
-		
+
+        //edit text param
+        var edit_text = false;
 		
 		// Public Methods
 		//-----------------
@@ -227,7 +229,7 @@
 			}
 			
 			_paper.clear();
-			
+
 			if (_strokes.length > 0) {
 				var i = 0;
 
@@ -263,7 +265,27 @@
 					$(_container).unbind("mousedown", _mousedown);
 					$(_container).unbind("mousemove", _mousemove);
 					$(_container).unbind("mouseup", _mouseup);
+                    $(_canvas).unbind("click", _mouseup_text);
+
 					$(document).unbind("mouseup", _mouseup);
+
+					// iPhone Events
+					var agent = navigator.userAgent;
+					if (agent.indexOf("iPhone") > 0 || agent.indexOf("iPod") > 0) {
+						$(_container).unbind("touchstart", _touchstart);
+						$(_container).unbind("touchmove", _touchmove);
+						$(_container).unbind("touchend", _touchend);
+					}
+                } else if (_options.editing == "text") {
+                    // Cursor is crosshair, so it looks like we can do something.
+					$(_container).css("cursor", "crosshair");
+					$(_container).unbind("mousedown", _mousedown);
+					$(_container).unbind("mousemove", _mousemove);
+					$(_container).unbind("mouseup", _mouseup);
+					$(document).unbind("mouseup", _mouseup);
+                    //text event
+                    $(_canvas).click(_mouseup_text);
+                    //$(document).mouseup(_mouseup_text);
 
 					// iPhone Events
 					var agent = navigator.userAgent;
@@ -274,6 +296,8 @@
 					}
 				} else {
 					// Cursor is crosshair, so it looks like we can do something.
+                    $(_canvas).unbind("click", _mouseup_text);
+
 					$(_container).css("cursor", "crosshair");
 
 					$(_container).mousedown(_mousedown);
@@ -297,6 +321,7 @@
 				$(_container).unbind("mousedown", _mousedown);
 				$(_container).unbind("mousemove", _mousemove);
 				$(_container).unbind("mouseup", _mouseup);
+                $(_canvas).unbind("click", _mouseup_text);
 				$(document).unbind("mouseup", _mouseup);
 				
 				// iPhone Events
@@ -332,13 +357,18 @@
 		
 		function _redraw_strokes() {
 			_paper.clear();
-			
 			for (var i = 0, n = _strokes.length; i < n; i++) {
 				var stroke = _strokes[i];
 				var type = stroke.type;
-				_paper[type]()
+                if (type=='path'){
+				    _paper[type]()
 					.attr(stroke)
 					.click(_pathclick);
+                } else if (type=='text'){
+                    _paper.text().attr(stroke).click(_pathclick);
+
+                }
+
 			}
 		};
 		
@@ -382,7 +412,46 @@
 				_fire_change();
 				
 				this.remove();
-			}
+			} else if (_options.editing == "text"){
+                if (this.type == 'text') {
+                    var stroke = this.attr();
+                    stroke.type = this.type;
+                    _action_history.add({
+                        type: "erase",
+                        stroke: stroke
+                    });
+                    for (var i = 0, n = _strokes.length; i < n; i++) {
+                        var s = _strokes[i];
+                        if (equiv(s, stroke)) {
+                            _strokes.splice(i, 1);
+                        }
+                    }
+                    var input_txt = window.prompt("Input Text", stroke.text);
+                    _redraw_strokes();
+                    if (input_txt != null){
+                        var text_data = _paper.text().click(_pathclick);
+                        text_data.attr({
+                            "fill": stroke.fill,
+                            "text": input_txt,
+                            "font": stroke.font,
+                            "x":stroke.x,
+                            "y":stroke.y,
+                            "font-size": 18
+                        });
+                        var stroke = text_data.attr();
+                        stroke.type = text_data.type;
+
+                        _strokes.push(stroke);
+
+                        _action_history.add({
+                            type: "text",
+                            stroke: stroke
+                        });
+                    }
+                    edit_text=true;
+                    _fire_change();
+                }
+            }
 		};
 		
 		function _mousedown(e) {
@@ -416,8 +485,44 @@
 				});
 				
 				_fire_change();
+
+
 			}
 		};
+
+        function _mouseup_text(e){
+            if (edit_text==false){
+                var input_txt = window.prompt("Input Text", "");
+                if (input_txt != null){
+                    var _offset = _container.offset();
+                    var x = e.pageX - _offset.left,
+                        y = e.pageY - _offset.top;
+
+                    var text_data = _paper.text().click(_pathclick);
+                    text_data.attr({
+                        "fill": "#000000",
+                        "text": input_txt,
+                        "font": "18px Arial",
+                        "x":x,
+                        "y":y,
+                        "font-size": 18
+                    });
+                    var stroke = text_data.attr();
+                    stroke.type = text_data.type;
+
+                    _strokes.push(stroke);
+
+                    _action_history.add({
+                        type: "text",
+                        stroke: stroke
+                    });
+
+                    _fire_change();
+                }
+            } else {
+                edit_text=false;
+            }
+        }
 		
 		function _touchstart(e) {
 			e = e.originalEvent;
@@ -543,6 +648,9 @@
 							jQuery.merge(strokes, action.strokes);
 							break;
 						case "stroke":
+							strokes.push(action.stroke);
+							break;
+                        case "text":
 							strokes.push(action.stroke);
 							break;
 						case "erase":
