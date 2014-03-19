@@ -368,6 +368,8 @@
                     _paper.text().attr(stroke).click(_pathclick);
                 } else if (type=='circle'){
                     _paper.circle().attr(stroke).click(_pathclick);
+                } else if (type=='rect'){
+                    _paper.rect().attr(stroke).click(_pathclick);
                 }
 			}
 		};
@@ -658,6 +660,9 @@
 						case "circle":
 							strokes.push(action.stroke);
 							break;
+                        case "rect":
+							strokes.push(action.stroke);
+							break;
                         case "text":
 							strokes.push(action.stroke);
 							break;
@@ -697,7 +702,7 @@
 		var _c = null;
 		var _points = [];
 
-        //drawing_mode [stroke, line, circle]
+        //drawing_mode [stroke, line, circle, rect]
         var _mode = 'stroke';
 
         self.mode = function(value){
@@ -762,6 +767,8 @@
 			_points.push([x, y]);
             if(_mode == "circle"){
                 _c = sketchpad.paper().circle();
+            } else if (_mode == "rect") {
+                _c = sketchpad.paper().rect();
             } else {
                 _c = sketchpad.paper().path();
             }
@@ -797,9 +804,7 @@
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
 					y = e.pageY - _offset.top;
-
                 var f_x = _points[0][0], f_y = _points[0][1];
-                var r = Math.sqrt(Math.pow(x - f_x,2) + Math.pow(y - f_y,2));
                 if (_mode == "stroke"){
                     _points.push([x, y]);
                     _c.attr({ path: points_to_svg() });
@@ -807,10 +812,26 @@
                     _points[1]=[x, y];
                     _c.attr({ path: points_to_svg() });
                 } else if(_mode == "circle"){
+                    var r = Math.sqrt(Math.pow(x - f_x,2) + Math.pow(y - f_y,2));
                     _points[1]=[x, y];
                     _c.attr({ "cx":f_x,
                               "cy":f_y,
                               "r": r});
+                } else if(_mode == "rect"){
+                    var width = x - f_x, height = y - f_y;
+                    _points[1]=[x, y];
+                    var left=f_x, top=f_y;
+                    if (width < 0){
+                        left = x;
+                    }
+                    if (height < 0){
+                        top = y;
+                    }
+                    _c.attr({ "x":left,
+                              "y":top,
+                              "width": Math.abs(width),
+                              "height": Math.abs(height),
+                              "r": 3});
                 }
 
 			}
