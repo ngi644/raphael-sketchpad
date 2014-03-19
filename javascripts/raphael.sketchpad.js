@@ -59,7 +59,7 @@
 			width: 100,
 			height: 100,
 			strokes: [],
-			editing: "draw"
+			editing: "stroke"
 		};
 		jQuery.extend(_options, options);
 		
@@ -294,6 +294,7 @@
 						$(_container).unbind("touchend", _touchend);
 					}
 				} else {
+
 					// Cursor is crosshair, so it looks like we can do something.
                     $(_canvas).unbind("click", _mouseclick_text);
 
@@ -365,9 +366,9 @@
 					.click(_pathclick);
                 } else if (type=='text'){
                     _paper.text().attr(stroke).click(_pathclick);
-
+                } else if (type=='circle'){
+                    _paper.circle().attr(stroke).click(_pathclick);
                 }
-
 			}
 		};
 		
@@ -457,7 +458,7 @@
 		
 		function _mousedown(e) {
 			_disable_user_select();
-
+            _pen.mode(_options.editing);
 			_pen.start(e, self);
 		};
 
@@ -477,16 +478,16 @@
 				// Save the stroke.
 				var stroke = path.attr();
 				stroke.type = path.type;
-				
 				_strokes.push(stroke);
-				
+
 				_action_history.add({
-					type: "stroke",
+					type: _options.editing,
 					stroke: stroke
 				});
 				
 				_fire_change();
 
+                _redraw_strokes();
 
 			}
 		};
@@ -651,6 +652,12 @@
 						case "stroke":
 							strokes.push(action.stroke);
 							break;
+						case "line":
+							strokes.push(action.stroke);
+							break;
+						case "circle":
+							strokes.push(action.stroke);
+							break;
                         case "text":
 							strokes.push(action.stroke);
 							break;
@@ -689,6 +696,19 @@
 		var _drawing = false;
 		var _c = null;
 		var _points = [];
+
+        //drawing_mode [stroke, line, circle]
+        var _mode = 'stroke';
+
+        self.mode = function(value){
+			if (value === undefined){
+		      	return _mode;
+		    }
+
+			_mode = value;
+
+			return self;
+        }
 
 		self.color = function(value) {
 			if (value === undefined){
@@ -740,8 +760,11 @@
 			var x = e.pageX - _offset.left,
 				y = e.pageY - _offset.top;
 			_points.push([x, y]);
-
-			_c = sketchpad.paper().path();
+            if(_mode == "circle"){
+                _c = sketchpad.paper().circle();
+            } else {
+                _c = sketchpad.paper().path();
+            }
 
 			_c.attr({ 
 				stroke: _color,
@@ -773,9 +796,23 @@
 		self.move = function(e, sketchpad) {
 			if (_drawing == true) {
 				var x = e.pageX - _offset.left,
-					y = e.pageY - _offset.top;			
-				_points.push([x, y]);
-				_c.attr({ path: points_to_svg() });
+					y = e.pageY - _offset.top;
+
+                var f_x = _points[0][0], f_y = _points[0][1];
+                var r = Math.sqrt(Math.pow(x - f_x,2) + Math.pow(y - f_y,2));
+                if (_mode == "stroke"){
+                    _points.push([x, y]);
+                    _c.attr({ path: points_to_svg() });
+                } else if (_mode == "line"){
+                    _points[1]=[x, y];
+                    _c.attr({ path: points_to_svg() });
+                } else if(_mode == "circle"){
+                    _points[1]=[x, y];
+                    _c.attr({ "cx":f_x,
+                              "cy":f_y,
+                              "r": r});
+                }
+
 			}
 		};
 
