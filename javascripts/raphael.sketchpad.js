@@ -360,17 +360,18 @@
 			for (var i = 0, n = _strokes.length; i < n; i++) {
 				var stroke = _strokes[i];
 				var type = stroke.type;
+                var p = null;
                 if (type=='path'){
-				    _paper[type]()
-					.attr(stroke)
-					.click(_pathclick);
+				    p = _paper[type]().attr(stroke);
                 } else if (type=='text'){
-                    _paper.text().attr(stroke).click(_pathclick);
+                    p = _paper.text().attr(stroke);
                 } else if (type=='circle'){
-                    _paper.circle().attr(stroke).click(_pathclick);
+                    p = _paper.circle().attr(stroke);
                 } else if (type=='rect'){
-                    _paper.rect().attr(stroke).click(_pathclick);
+                    p = _paper.rect().attr(stroke);
                 }
+                p.click(_pathclick);
+                p.drag(_dragmove, _dragstart, _dragend);
 			}
 		};
 		
@@ -554,7 +555,70 @@
 
 			_mouseup(e);
 		}
-		
+
+        var _dragstart = function (x,y) {
+            if (_options.editing != "move"){
+                return;
+            }
+            if (this.type == "circle"){
+                this.ox = this.attr("cx");
+                this.oy = this.attr("cy");
+            } else if (this.type == "rect" || this.type == "text"){
+                this.ox = this.attr("x");
+                this.oy = this.attr("y");
+            }  else if (this.type == "path"){
+                this.ox = x;
+                this.oy = y;
+            }
+            this.org_attr = this.attr();
+            this.org_attr.type = this.type;
+        }
+        var _dragmove = function (dx, dy,x,y) {
+            if (_options.editing != "move"){
+                return;
+            }
+            var att={};
+            if (this.type == "circle"){
+                att={"cx": this.ox + dx, "cy": this.oy + dy};
+
+            } else if (this.type == "rect" || this.type == "text"){
+                att={"x": this.ox + dx, "y": this.oy + dy};
+
+            }  else if (this.type == "path"){
+                //
+                var mx = x - this.ox, my = y - this.oy;
+                var _trans_path = Raphael.transformPath(this.attr("path"), 't'+mx+','+my);
+                this.ox += mx;
+                this.oy += my;
+                att = {"path": _trans_path};
+            }
+
+            this.attr(att);
+
+        }
+        var _dragend = function () {
+            if (_options.editing != "move"){
+                    return;
+            }
+            var org_stroke = this.org_attr;
+            var edit_stroke = this.attr();
+            edit_stroke.type = this.type;
+            for (var i = 0, n = _strokes.length; i < n; i++) {
+                var s = _strokes[i];
+
+                if (equiv(s, org_stroke)) {
+                    _strokes[i] = edit_stroke;
+                }
+            }
+            _action_history.add({
+                type: "move",
+                stroke: edit_stroke,
+                org_stroke: org_stroke
+            });
+            _redraw_strokes();
+            _fire_change();
+            }
+
 		// Setup
 		//--------
 		
@@ -648,6 +712,14 @@
 						case "init":
 						case "json":
 						case "strokes":
+                        case "move":
+                            for (var s = 0, n = strokes.length; s < n; s++) {
+                                var stroke = strokes[s];
+                                if (equiv(stroke, action.org_stroke)) {
+                                    strokes[s] = action.stroke;
+                                }
+                            }
+                            break;
 						case "batch":
 							jQuery.merge(strokes, action.strokes);
 							break;
@@ -831,7 +903,7 @@
                               "y":top,
                               "width": Math.abs(width),
                               "height": Math.abs(height),
-                              "r": 3});
+                              "r": 2});
                 }
 
 			}
